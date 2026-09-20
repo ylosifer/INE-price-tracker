@@ -1,4 +1,4 @@
-process.env.PLAYWRIGHT_BROWSERS_PATH = "0";
+
 
 const { chromium } = require("playwright");
 
@@ -288,6 +288,9 @@ async function performReveal(page) {
         name: /reveal price/i,
     });
 
+    /*
+     * Wait for the Reveal Price button to appear.
+     */
     try {
         await revealButton.waitFor({
             state: "visible",
@@ -302,59 +305,51 @@ async function performReveal(page) {
     }
 
     /*
-     * Give the store the mouse interaction it expects.
+     * The INE store explicitly requires the user
+     * to hover over the price area before the
+     * current price can be revealed.
      */
     try {
         const priceArea = page.locator(
             ".price-area, .price-container, .price-main"
         ).first();
 
-        if (await priceArea.count()) {
-            await priceArea.scrollIntoViewIfNeeded({
-                timeout: 3000,
-            });
+        await priceArea.waitFor({
+            state: "visible",
+            timeout: 5000,
+        });
 
-            const box = await priceArea.boundingBox();
+        await priceArea.scrollIntoViewIfNeeded({
+            timeout: 5000,
+        });
 
-            if (box) {
-                await page.mouse.move(
-                    box.x + box.width / 2,
-                    box.y + box.height / 2,
-                    {
-                        steps: 10,
-                    }
-                );
+        console.log("Hovering over price area...");
 
-                console.log("Mouse moved over price area.");
-            }
-        }
+        await priceArea.hover({
+            force: true,
+            timeout: 5000,
+        });
+
+        console.log("Price area hovered.");
 
         /*
-         * A small amount of movement helps reproduce normal
-         * user interaction without waiting indefinitely.
+         * The store performs asynchronous work after
+         * the hover event, so give it some time before
+         * checking the button state.
          */
-        await page.mouse.move(
-            100,
-            100,
-            {
-                steps: 5,
-            }
-        );
+        await sleep(1500);
 
-        await sleep(500);
-
-        console.log("Mouse movement completed.");
     } catch (error) {
         console.warn(
-            `Mouse interaction warning: ${error.message}`
+            `Price-area hover warning: ${error.message}`
         );
     }
 
     /*
-     * Wait for the button to become enabled.
+     * Wait for the Reveal Price button to become enabled.
      *
-     * IMPORTANT:
-     * This is deliberately bounded.
+     * The store can respond slowly, so this is deliberately
+     * bounded at 15 seconds rather than waiting forever.
      */
     console.log(
         "Waiting for reveal button to become enabled..."
@@ -382,18 +377,22 @@ async function performReveal(page) {
 
                 return (
                     !button.disabled &&
-                    button.getAttribute("aria-disabled") !==
-                        "true"
+                    button.getAttribute("aria-disabled") !== "true"
                 );
             },
             {
-                timeout: 5000,
+                timeout: 15000,
                 polling: 100,
             }
         );
 
         console.log("Reveal button enabled.");
+
     } catch (error) {
+        /*
+         * Capture the button state so a failed scrape
+         * is diagnosable rather than silently failing.
+         */
         let buttonState = null;
 
         try {
@@ -420,19 +419,66 @@ async function performReveal(page) {
             buttonState
         );
 
+        /*
+         * Additional diagnostics.
+         */
+        console.log(
+            "PAGE URL:",
+            page.url()
+        );
+
+        console.log(
+            "PAGE TITLE:",
+            await page.title()
+        );
+
+        try {
+            const bodyText =
+                await page.locator("body").innerText();
+
+            console.log(
+                "VISIBLE BODY TEXT:",
+                bodyText.slice(0, 5000)
+            );
+        } catch (bodyError) {
+            console.log(
+                "Could not read body text:",
+                bodyError.message
+            );
+        }
+
+        try {
+            await page.screenshot({
+                path: "scraper-debug.png",
+                fullPage: true,
+            });
+
+            console.log(
+                "Diagnostic screenshot saved as scraper-debug.png"
+            );
+        } catch (screenshotError) {
+            console.log(
+                "Could not capture screenshot:",
+                screenshotError.message
+            );
+        }
+
         throw new Error(
             "Reveal button remained disabled after interaction"
         );
     }
 
     /*
-     * Click the button.
+     * Click the button only after it has actually
+     * become enabled.
      */
     console.log("Clicking reveal price...");
 
     await revealButton.click({
         timeout: 5000,
     });
+
+    console.log("Reveal price clicked.");
 }
 
 /**
