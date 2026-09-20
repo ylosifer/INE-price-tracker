@@ -1,3 +1,5 @@
+process.env.PLAYWRIGHT_BROWSERS_PATH = "0";
+
 const { chromium } = require("playwright");
 
 const STORE_BASE_URL = "https://demo.inelabteamdev.com";
