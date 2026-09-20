@@ -1,0 +1,41 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+
+# Local data
+coverage/
+
+# Scraper debugging screenshots
+backend/*.png
+
+# Local scraper/debug scripts
+backend/src/test*.js
+backend/src/scraper/test*.js
+backend/src/scraper/inspect*.js
