@@ -81,7 +81,7 @@ async function scrapeTrackedProduct(trackedProductId) {
     const result = await scrapeProduct(
         trackedProduct.store_product_id,
         {
-            headless: false,
+            headless: true,
             maxAttempts: 3,
         }
     );
